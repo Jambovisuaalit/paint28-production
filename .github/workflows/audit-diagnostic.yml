@@ -1,0 +1,72 @@
+name: Audit Diagnostic
+
+on:
+  push:
+    branches: [fix/audit-remediation-20260723]
+    paths:
+      - "src/**"
+      - "package.json"
+      - ".github/workflows/audit-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/audit-remediation-20260723
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run diagnostics
+        shell: bash
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+          VITE_EDGE_FUNCTION_NAME: submit-quote
+          VITE_PREVIEW_ADMIN_EMAIL: preview-admin@paint28.test
+        run: |
+          set +e
+          : > docs/CI_DIAGNOSTIC.txt
+
+          echo "Paint28 CI diagnostic" >> docs/CI_DIAGNOSTIC.txt
+          echo "Commit: $GITHUB_SHA" >> docs/CI_DIAGNOSTIC.txt
+          echo >> docs/CI_DIAGNOSTIC.txt
+
+          echo "## npm install" >> docs/CI_DIAGNOSTIC.txt
+          npm install --no-audit --no-fund >> docs/CI_DIAGNOSTIC.txt 2>&1
+          INSTALL_EXIT=$?
+          echo "EXIT_CODE=$INSTALL_EXIT" >> docs/CI_DIAGNOSTIC.txt
+          echo >> docs/CI_DIAGNOSTIC.txt
+
+          if [ "$INSTALL_EXIT" -eq 0 ]; then
+            echo "## npm run lint" >> docs/CI_DIAGNOSTIC.txt
+            npm run lint >> docs/CI_DIAGNOSTIC.txt 2>&1
+            echo "EXIT_CODE=$?" >> docs/CI_DIAGNOSTIC.txt
+            echo >> docs/CI_DIAGNOSTIC.txt
+
+            echo "## npm run typecheck" >> docs/CI_DIAGNOSTIC.txt
+            npm run typecheck >> docs/CI_DIAGNOSTIC.txt 2>&1
+            echo "EXIT_CODE=$?" >> docs/CI_DIAGNOSTIC.txt
+            echo >> docs/CI_DIAGNOSTIC.txt
+
+            echo "## npm run build" >> docs/CI_DIAGNOSTIC.txt
+            npm run build >> docs/CI_DIAGNOSTIC.txt 2>&1
+            echo "EXIT_CODE=$?" >> docs/CI_DIAGNOSTIC.txt
+          fi
+
+      - name: Commit diagnostic report
+        shell: bash
+        run: |
+          git config user.name "paint28-ci"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/CI_DIAGNOSTIC.txt package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record CI diagnostic and lockfile [skip ci]"
+          git push origin HEAD:fix/audit-remediation-20260723
