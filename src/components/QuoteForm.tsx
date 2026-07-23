@@ -44,6 +44,8 @@ export function QuoteForm() {
     event.preventDefault();
     if (state === "submitting") return;
 
+    if (!event.currentTarget.reportValidity()) return;
+
     if (files.length < 1 || files.length > 3) {
       setState("error");
       setMessage("Lisää 1–3 kuvaa vauriosta.");
@@ -51,6 +53,12 @@ export function QuoteForm() {
     }
 
     const form = new FormData(event.currentTarget);
+    if (form.get("privacyConsentCheckbox") !== "on") {
+      setState("error");
+      setMessage("Tietosuostumus vaaditaan.");
+      return;
+    }
+    form.delete("privacyConsentCheckbox");
     form.set("privacyConsent", "true");
     form.delete("images");
     for (const file of files) form.append("images", file);
@@ -167,7 +175,7 @@ export function QuoteForm() {
       ) : null}
 
       <label className="consent-row">
-        <input type="checkbox" required />
+        <input type="checkbox" name="privacyConsentCheckbox" required />
         <span>Hyväksyn, että antamiani tietoja käytetään tarjouspyynnön käsittelyyn.</span>
       </label>
 
