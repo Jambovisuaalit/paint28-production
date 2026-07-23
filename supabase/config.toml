@@ -1,0 +1,4 @@
+project_id = "dbfvptbhxqgsanwnwgxy"
+
+[functions.submit-quote]
+verify_jwt = false
