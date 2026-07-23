@@ -4,7 +4,7 @@ import App from "./App";
 import AdminApp from "./admin/AdminApp";
 import "./index.css";
 
-const isAdmin = window.location.pathname.startsWith("/admin");
+const isAdmin = window.location.hash === "#admin" || window.location.pathname.includes("/admin");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>{isAdmin ? <AdminApp /> : <App />}</StrictMode>,
