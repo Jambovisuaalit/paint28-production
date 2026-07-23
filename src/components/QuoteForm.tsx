@@ -1,12 +1,33 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Camera, CheckCircle2, ImagePlus, LoaderCircle, Send, X } from "lucide-react";
 import { edgeFunctionName, supabase } from "../lib/supabase";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILES = 3;
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/heic"];
+const FINNISH_PLATE_PATTERN = /^[A-ZÅÄÖ]{2,3}-\d{1,3}$/;
+const FINNISH_PHONE_PATTERN = /^(?:\+358|00358|0)\d{5,12}$/;
 
 type FormState = "idle" | "submitting" | "success" | "error";
+
+function normalizePlate(value: string) {
+  const normalized = value
+    .trim()
+    .toLocaleUpperCase("fi-FI")
+    .replace(/\s+/g, "");
+
+  return normalized.replace(/^([A-ZÅÄÖ]{2,3})(\d{1,3})$/, "$1-$2");
+}
+
+function normalizePhone(value: string) {
+  return value.trim().replace(/[\s()-]/g, "");
+}
+
+function formText(form: FormData, key: string) {
+  const value = form.get(key);
+  return typeof value === "string" ? value : "";
+}
 
 export function QuoteForm() {
   const [files, setFiles] = useState<File[]>([]);
@@ -19,18 +40,34 @@ export function QuoteForm() {
     [files],
   );
 
+  useEffect(() => {
+    return () => {
+      for (const preview of previews) URL.revokeObjectURL(preview.url);
+    };
+  }, [previews]);
+
+  function fail(nextMessage: string) {
+    setState("error");
+    setMessage(nextMessage);
+  }
+
   function handleFiles(nextFiles: FileList | null) {
     if (!nextFiles) return;
 
     const selected = Array.from(nextFiles);
-    const combined = [...files, ...selected].slice(0, 3);
+    if (files.length + selected.length > MAX_FILES) {
+      fail("Voit lisätä enintään kolme kuvaa.");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
+    const combined = [...files, ...selected];
     const invalid = combined.find(
       (file) => !ALLOWED_MIME_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE,
     );
 
     if (invalid) {
-      setState("error");
-      setMessage("Sallittu kuvamuoto on JPG, PNG tai HEIC. Enimmäiskoko on 10 Mt / kuva.");
+      fail("Sallittu kuvamuoto on JPG, PNG tai HEIC. Enimmäiskoko on 10 Mt / kuva.");
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
@@ -46,18 +83,32 @@ export function QuoteForm() {
 
     if (!event.currentTarget.reportValidity()) return;
 
-    if (files.length < 1 || files.length > 3) {
-      setState("error");
-      setMessage("Lisää 1–3 kuvaa vauriosta.");
+    if (files.length < 1 || files.length > MAX_FILES) {
+      fail("Lisää 1–3 kuvaa vauriosta.");
       return;
     }
 
     const form = new FormData(event.currentTarget);
-    if (form.get("privacyConsentCheckbox") !== "on") {
-      setState("error");
-      setMessage("Tietosuostumus vaaditaan.");
+    const licensePlate = normalizePlate(formText(form, "licensePlate"));
+    const phone = normalizePhone(formText(form, "phone"));
+
+    if (!FINNISH_PLATE_PATTERN.test(licensePlate)) {
+      fail("Kirjoita suomalainen rekisteritunnus, esimerkiksi ABC-123.");
       return;
     }
+
+    if (!FINNISH_PHONE_PATTERN.test(phone)) {
+      fail("Kirjoita suomalainen puhelinnumero.");
+      return;
+    }
+
+    if (form.get("privacyConsentCheckbox") !== "on") {
+      fail("Tietosuostumus vaaditaan.");
+      return;
+    }
+
+    form.set("licensePlate", licensePlate);
+    form.set("phone", phone);
     form.delete("privacyConsentCheckbox");
     form.set("privacyConsent", "true");
     form.delete("images");
@@ -71,8 +122,7 @@ export function QuoteForm() {
     });
 
     if (error || !data?.success) {
-      setState("error");
-      setMessage(data?.error ?? "Tarjouspyynnön lähetys epäonnistui. Yritä uudelleen.");
+      fail(data?.error ?? "Tarjouspyynnön lähetys epäonnistui. Yritä uudelleen.");
       return;
     }
 
@@ -106,11 +156,20 @@ export function QuoteForm() {
         </label>
         <label>
           Rekisterinumero
-          <input name="licensePlate" required maxLength={20} autoCapitalize="characters" />
+          <input
+            name="licensePlate"
+            required
+            maxLength={7}
+            autoCapitalize="characters"
+            autoComplete="off"
+            inputMode="text"
+            pattern="[A-Za-zÅÄÖåäö]{2,3}-?[0-9]{1,3}"
+            title="Kirjoita suomalainen rekisteritunnus, esimerkiksi ABC-123."
+          />
         </label>
         <label>
           Puhelin
-          <input name="phone" type="tel" required minLength={5} maxLength={40} autoComplete="tel" />
+          <input name="phone" type="tel" required minLength={5} maxLength={40} autoComplete="tel" inputMode="tel" />
         </label>
         <label>
           Sähköposti
