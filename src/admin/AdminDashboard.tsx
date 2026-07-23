@@ -18,6 +18,7 @@ import { ImageLightbox } from "./ImageLightbox";
 import type { QuoteImage, QuoteRequest, QuoteStatus } from "./types";
 
 const DAMAGE_PHOTOS_BUCKET = "damage-photos";
+const SIGNED_URL_TTL_SECONDS = 10 * 60;
 const STATUS_OPTIONS: QuoteStatus[] = [
   "Uusi",
   "Käsittelyssä",
@@ -86,17 +87,32 @@ export function AdminDashboard({ user }: { user: User }) {
     }
 
     const raw = (data ?? []) as unknown as QuoteRequest[];
-    const paths = raw.flatMap((lead) => lead.quote_images ?? []).map((image) => image.storage_path);
+    const paths = [...new Set(
+      raw.flatMap((lead) => lead.quote_images ?? []).map((image) => image.storage_path),
+    )];
     const signed = new Map<string, string>();
 
     if (paths.length > 0) {
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from(DAMAGE_PHOTOS_BUCKET)
-        .createSignedUrls(paths, 10 * 60);
+      const { data: authData } = await supabase.auth.getSession();
 
-      if (!signedError) {
-        for (const item of signedData ?? []) {
-          if (item.path && item.signedUrl) signed.set(item.path, item.signedUrl);
+      if (!authData.session) {
+        showToast({ type: "error", message: "Admin-istunto on vanhentunut. Kirjaudu uudelleen." });
+      } else {
+        const signedResults = await Promise.all(
+          paths.map(async (path) => {
+            const { data: signedData, error: signedError } = await supabase.storage
+              .from(DAMAGE_PHOTOS_BUCKET)
+              .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+            return {
+              path,
+              signedUrl: signedError ? undefined : signedData?.signedUrl,
+            };
+          }),
+        );
+
+        for (const item of signedResults) {
+          if (item.signedUrl) signed.set(item.path, item.signedUrl);
         }
       }
     }
@@ -175,7 +191,7 @@ export function AdminDashboard({ user }: { user: User }) {
             <button className="icon-button" type="button" onClick={signOut} aria-label="Kirjaudu ulos"><LogOut /></button>
           </div>
         </div>
-        <div className="spectrum-line" />
+        <div className="spectrum-line" aria-hidden="true" />
       </header>
 
       <div className="page-width admin-main">
@@ -225,7 +241,7 @@ export function AdminDashboard({ user }: { user: User }) {
                         <button key={image.id} type="button" onClick={() => setLightbox({ images: lead.quote_images, index })} aria-label={`Avaa vauriokuva ${index + 1}`}><img src={image.signed_url} alt={image.original_filename ?? `Vauriokuva ${index + 1}`} /></button>
                       ) : null)}
                     </div>
-                  ) : <p style={{ color: "#71717a" }}>Ei kuvia.</p>}
+                  ) : <p style={{ color: "var(--muted)" }}>Ei kuvia.</p>}
                   <div className="lead-controls">
                     <select aria-label={`Muuta tarjouspyynnön ${lead.license_plate} tilaa`} value={lead.status} onChange={(event) => void updateStatus(lead.id, event.target.value as QuoteStatus)} disabled={updatingId === lead.id}>
                       {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
