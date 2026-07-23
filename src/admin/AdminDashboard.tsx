@@ -3,7 +3,6 @@ import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   Archive,
-  CarFront,
   ImageIcon,
   LoaderCircle,
   LogOut,
