@@ -63,8 +63,9 @@ export default function AdminApp() {
     return (
       <main className="login-shell">
         <div className="login-card">
-          <ShieldX style={{ width: 44, height: 44, color: "#fca5a5" }} aria-hidden="true" />
+          <ShieldX style={{ width: 44, height: 44, color: "#00f0ff" }} aria-hidden="true" />
           <h1>Ei käyttöoikeutta</h1>
+          <div className="spectrum-line login-spectrum" aria-hidden="true" />
           <p>Istunto ei vastaa aktiivista Paint28-admin-käyttäjää.</p>
           <button className="button secondary" type="button" onClick={async () => { await supabase.auth.signOut(); window.location.replace("/admin"); }}>Palaa kirjautumiseen</button>
         </div>
