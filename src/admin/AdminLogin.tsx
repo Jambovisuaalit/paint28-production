@@ -30,6 +30,7 @@ export function AdminLogin() {
         <div className="brand"><span className="brand-mark">28</span><span><strong>PAINT28</strong><small>Preview admin</small></span></div>
         <ShieldCheck style={{ width: 42, height: 42, color: "#00f0ff", marginTop: 28 }} aria-hidden="true" />
         <h1>Hannan ohjauspaneeli</h1>
+        <div className="spectrum-line login-spectrum" aria-hidden="true" />
         <p>Esittelyvaiheessa käytetään erillistä testikäyttäjää. Hannan henkilökohtainen tili aktivoidaan vasta asiakkaan hyväksynnän jälkeen.</p>
 
         <label>
