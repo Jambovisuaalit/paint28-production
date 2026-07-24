@@ -1,0 +1,12 @@
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  readonly VITE_SUPABASE_URL: string;
+  readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
+  readonly VITE_EDGE_FUNCTION_NAME?: string;
+  readonly VITE_PREVIEW_ADMIN_EMAIL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
