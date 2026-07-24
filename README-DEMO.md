@@ -1,42 +1,99 @@
-# Demo branch: Vercel deployment notes
+# Paint28 preview deployment
 
-This branch (`demo/vercel-deploy`) contains the Vercel configuration for a temporary customer demo on a `vercel.app` domain.
+Preview rakennetaan `fix/production-readiness-gates`-haarasta tarkistettavaksi pull requestiksi. Muutoksia ei yhdistetä `main`-haaraan ennen vihreää CI:tä, toimivaa Vercel-previewta ja dokumentoitua smoke-testiä.
 
-## Deployment configuration
+## Vercel-konfiguraatio
 
-- `vercel.json` runs `npm run build -- --mode vercel`.
-- Vite uses `/` as the asset base in `vercel` mode and `/paint28-production/` for GitHub Pages.
-- Vercel serves the built SPA from `dist` and rewrites routes to `index.html`.
-- `.vercelignore` excludes local build artifacts.
+- `vercel.json` ajaa `npm run build -- --mode vercel`.
+- Vite käyttää Vercelissä juuripolkua `/`.
+- SPA-reitit ohjataan `index.html`-tiedostoon.
+- Preview vastaa headerilla `X-Robots-Tag: noindex, nofollow, noarchive`.
+- Selainbundle käyttää vain julkista Supabase-URL:ia ja publishable keytä.
 
-## Backend
+## Nykyinen Vercel-tila 24.7.2026
 
-The demo does **not** use a mocked quote service. It connects to the Paint28 Supabase project and invokes the real `submit-quote` Edge Function.
+Projektissa `paint28-vite-app-production-ready` näkyy vain yksi epäonnistunut deployment:
 
-The committed `.env.vercel` file contains only browser-public values:
+```text
+paint28-vite-app-production-ready-7xr2pdxnh.vercel.app
+state: ERROR
+```
 
-- Supabase project URL
-- Supabase publishable key
-- Edge Function name
-- preview admin email
+Tätä osoitetta ei pidetä hyväksyttynä preview-originina ennen onnistunutta redeployta.
 
-No service-role key or other server secret is committed to GitHub or bundled into the frontend.
+## Git-yhteys
 
-## Deploy from Vercel
+Vercelin Git-integraation tulee osoittaa tähän repositoryyn:
 
-Import `Jambovisuaalit/paint28-production` and select branch `demo/vercel-deploy`.
+```text
+Jambovisuaalit/paint28-production
+```
 
-- Framework preset: Vite
-- Build command: supplied by `vercel.json`
-- Output directory: supplied by `vercel.json`
+Preview branch:
 
-After the stable Vercel URL is known, add its exact origin to the `submit-quote` Edge Function origin allowlist before testing form submission.
+```text
+fix/production-readiness-gates
+```
 
-## Required smoke checks
+Production branch pysyy `main`-haarassa, mutta tuotantojulkaisua ei aktivoida ennen asiakashyväksyntää.
 
-1. Public page loads without missing CSS, JavaScript or image assets.
-2. Mobile sticky CTA is visible below 768 px and respects the safe area.
-3. Quote submission with 1–3 valid images returns the success state.
-4. Invalid file type, oversized image and missing consent are blocked.
-5. Preview admin login, Realtime lead appearance and signed-image lightbox work.
-6. Preview deployment is not used as the production `paint28.fi` canonical URL.
+## Preview-origin
+
+Kun Vercel luo onnistuneen pysyvän preview-osoitteen, lisää täsmällinen origin Supabase Edge Functionin ympäristöön:
+
+```text
+PREVIEW_ORIGIN=https://EXACT_PREVIEW_HOST
+```
+
+Vaihtoehtoiset lisäoriginit:
+
+```text
+ALLOWED_ORIGINS=https://HOST_ONE,https://HOST_TWO
+```
+
+- Älä käytä `*.vercel.app`-jokeria.
+- Älä lisää deploymentia, jonka tila on `ERROR`.
+- Redeployaa `submit-quote` origin-muutoksen jälkeen.
+
+## Preview-admin
+
+Käytössä oleva preview-admin:
+
+```text
+ville@vidosocial.com
+```
+
+24.7.2026 live-tarkistus vahvisti:
+
+- Auth-käyttäjä on olemassa
+- sähköposti on vahvistettu
+- `role = 'admin'`
+- `active = true`
+
+Hannan henkilökohtaista tiliä ei aktivoida preview-vaiheessa.
+
+## Turnstile
+
+Turnstile otetaan käyttöön vain avainparina:
+
+```text
+Vercel:  VITE_TURNSTILE_SITE_KEY=<site key>
+Supabase: TURNSTILE_SECRET_KEY=<matching secret>
+```
+
+Jos avaimia ei ole vielä saatavilla, molemmat jätetään pois. Pelkän secretin aktivointi estäisi lomakelähetykset.
+
+## Pakolliset tarkistukset
+
+1. PR:n `lint-typecheck-build` on vihreä.
+2. PR:n `playwright-ui-smoke` on vihreä.
+3. Julkinen sivu latautuu ilman puuttuvia assetteja.
+4. Mobiilin sticky CTA näkyy alle 768 px leveydessä.
+5. Tarjouspyyntö hyväksyy 1–3 oikeaa JPG/PNG/HEIC-kuvaa.
+6. PDF, yli 10 Mt kuva, nolla kuvaa ja puuttuva suostumus estetään.
+7. Live Edge Function hylkää virheellisen puhelinnumeron ja rekisteritunnuksen.
+8. Preview-admin näkee uuden liidin Realtime-päivityksenä.
+9. Signed URL -kuvat avautuvat lightboxiin.
+10. Zoom, panorointi, hiiren rulla ja mobiilin pinch-to-zoom toimivat.
+11. Preview ei indeksoidu.
+12. Alkuperäinen V04-logo ja hyväksytyt työnäytekuvat on lisätty tai asset-poikkeama on kirjattu estäväksi.
