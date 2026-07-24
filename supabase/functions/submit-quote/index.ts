@@ -5,6 +5,8 @@ const BUCKET = "damage-photos";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TOTAL_SIZE = 3 * MAX_FILE_SIZE;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/heic"]);
+const FINNISH_PLATE_PATTERN = /^[A-ZÅÄÖ]{2,3}-\d{1,3}$/;
+const FINNISH_PHONE_PATTERN = /^(?:\+358|00358|0)\d{5,12}$/;
 const SERVER_FIELDS = [
   "id", "status", "internalNotes", "internal_notes",
   "storagePath", "storage_path", "createdAt", "created_at",
@@ -12,27 +14,47 @@ const SERVER_FIELDS = [
 const DEFAULT_ORIGINS = [
   "http://localhost:5173",
   "https://jambovisuaalit.github.io",
+  "https://paint28-vite-app-production-ready-info-32533854s-projects.vercel.app",
   "https://paint28.fi",
   "https://www.paint28.fi",
 ];
 
+function normalizeOrigin(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+function originValues(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map(normalizeOrigin)
+    .filter((origin) => origin.startsWith("https://") || origin.startsWith("http://"));
+}
+
 function origins(): Set<string> {
-  const configured = Deno.env.get("ALLOWED_ORIGINS")
-    ?.split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return new Set(configured?.length ? configured : DEFAULT_ORIGINS);
+  return new Set([
+    ...DEFAULT_ORIGINS,
+    ...originValues(Deno.env.get("ALLOWED_ORIGINS")),
+    ...originValues(Deno.env.get("PREVIEW_ORIGIN")),
+  ]);
+}
+
+function isAllowedOrigin(origin: string | null): boolean {
+  return !origin || origins().has(normalizeOrigin(origin));
 }
 
 function cors(origin: string | null): HeadersInit {
-  const safeOrigin = origin && origins().has(origin) ? origin : "https://paint28.fi";
-  return {
-    "Access-Control-Allow-Origin": safeOrigin,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };
+
+  if (origin && isAllowedOrigin(origin)) {
+    headers["Access-Control-Allow-Origin"] = normalizeOrigin(origin);
+  }
+
+  return headers;
 }
 
 function reply(body: Record<string, unknown>, status: number, origin: string | null): Response {
@@ -50,6 +72,19 @@ function reply(body: Record<string, unknown>, status: number, origin: string | n
 function text(form: FormData, key: string): string {
   const value = form.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizePlate(value: string): string {
+  const normalized = value
+    .trim()
+    .toLocaleUpperCase("fi-FI")
+    .replace(/\s+/g, "");
+
+  return normalized.replace(/^([A-ZÅÄÖ]{2,3})(\d{1,3})$/, "$1-$2");
+}
+
+function normalizePhone(value: string): string {
+  return value.trim().replace(/[\s()-]/g, "");
 }
 
 function fileExtension(mime: string): "jpg" | "png" | "heic" {
@@ -87,11 +122,14 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 Deno.serve(async (request) => {
   const origin = request.headers.get("origin");
 
+  if (!isAllowedOrigin(origin)) {
+    return reply({ error: "Origin not allowed" }, 403, origin);
+  }
+
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: cors(origin) });
   }
   if (request.method !== "POST") return reply({ error: "Method not allowed" }, 405, origin);
-  if (origin && !origins().has(origin)) return reply({ error: "Origin not allowed" }, 403, origin);
 
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
@@ -116,8 +154,8 @@ Deno.serve(async (request) => {
 
     const customerName = text(form, "customerName");
     const email = text(form, "email").toLowerCase();
-    const phone = text(form, "phone");
-    const licensePlate = text(form, "licensePlate").toUpperCase();
+    const phone = normalizePhone(text(form, "phone"));
+    const licensePlate = normalizePlate(text(form, "licensePlate"));
     const damageDescription = text(form, "damageDescription");
     const preferredContactMethod = text(form, "preferredContactMethod") || "phone";
     const privacyConsent = text(form, "privacyConsent") === "true";
@@ -125,8 +163,8 @@ Deno.serve(async (request) => {
 
     if (customerName.length < 2 || customerName.length > 120) return reply({ error: "Tarkista nimi." }, 400, origin);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) return reply({ error: "Tarkista sähköpostiosoite." }, 400, origin);
-    if (phone.length < 5 || phone.length > 40) return reply({ error: "Tarkista puhelinnumero." }, 400, origin);
-    if (licensePlate.length < 1 || licensePlate.length > 20) return reply({ error: "Tarkista rekisterinumero." }, 400, origin);
+    if (!FINNISH_PHONE_PATTERN.test(phone)) return reply({ error: "Kirjoita suomalainen puhelinnumero." }, 400, origin);
+    if (!FINNISH_PLATE_PATTERN.test(licensePlate)) return reply({ error: "Kirjoita suomalainen rekisteritunnus, esimerkiksi ABC-123." }, 400, origin);
     if (damageDescription.length < 5 || damageDescription.length > 5000) return reply({ error: "Kuvaile vaurio hieman tarkemmin." }, 400, origin);
     if (!["phone", "email"].includes(preferredContactMethod)) return reply({ error: "Virheellinen yhteydenottotapa." }, 400, origin);
     if (!privacyConsent) return reply({ error: "Tietosuostumus vaaditaan." }, 400, origin);
