@@ -1,0 +1,26 @@
+{
+  "name": "Paint28 Oy",
+  "short_name": "Paint28",
+  "icons": [
+    {
+      "src": "/brand/favicon/android-chrome-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/favicon/android-chrome-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icons/pwa-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#0A0A0C",
+  "background_color": "#0A0A0C",
+  "display": "standalone",
+  "lang": "fi"
+}
