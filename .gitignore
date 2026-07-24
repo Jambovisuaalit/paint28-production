@@ -9,6 +9,7 @@ dist
 .vite
 playwright-report
 test-results
+verification-results
 
 # TypeScriptin mahdollisesti generoimat Vite-konfiguraatioartefaktit
 /vite.config.js
