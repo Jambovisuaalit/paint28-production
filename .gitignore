@@ -6,3 +6,8 @@ dist
 .DS_Store
 *.log
 .vite
+
+# TypeScriptin mahdollisesti generoimat Vite-konfiguraatioartefaktit
+/vite.config.js
+/vite.config.js.map
+/vite.config.d.ts
