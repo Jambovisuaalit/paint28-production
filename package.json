@@ -10,7 +10,10 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc -b --pretty false",
     "test:e2e": "playwright test",
-    "test:e2e:ci": "playwright test tests/e2e/quote-flow.spec.ts"
+    "test:e2e:ci": "playwright test tests/e2e/quote-flow.spec.ts",
+    "verify": "node scripts/verify-local.mjs",
+    "verify:full": "node scripts/verify-local.mjs --e2e",
+    "verify:publish": "node scripts/verify-local.mjs --e2e --publish"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
