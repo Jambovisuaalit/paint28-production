@@ -65,7 +65,8 @@ test.describe("Paint28 live Edge Function validation", () => {
     );
 
     expect(response.status()).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json();
+    expect(body).toMatchObject({
       error: "Kirjoita suomalainen puhelinnumero.",
     });
   });
@@ -84,7 +85,8 @@ test.describe("Paint28 live Edge Function validation", () => {
     );
 
     expect(response.status()).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = await response.json();
+    expect(body).toMatchObject({
       error: "Kirjoita suomalainen rekisteritunnus, esimerkiksi ABC-123.",
     });
   });
