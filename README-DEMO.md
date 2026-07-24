@@ -1,21 +1,42 @@
 # Demo branch: Vercel deployment notes
 
-This branch (demo/vercel-deploy) contains a minimal Vercel configuration used for creating a temporary demo on a free vercel.app domain.
+This branch (`demo/vercel-deploy`) contains the Vercel configuration for a temporary customer demo on a `vercel.app` domain.
 
-Files added:
-- vercel.json — instructs Vercel to run the build ("npm run build") and serve the SPA from the dist directory.
-- .vercelignore — keeps the upload small by ignoring node_modules, dist and other local files.
+## Deployment configuration
 
-How deployment is triggered
-1) If you have connected this GitHub repository to Vercel via the Vercel Dashboard (recommended), a push to this branch will automatically start a deployment.
-2) If not connected, import the repo in Vercel: https://vercel.com/new → Import Git Repository → select "Jambovisuaalit/paint28-production" → choose branch "demo/vercel-deploy" → Framework Preset: Vite (or Build Command: `npm run build`, Output Directory: `dist`).
+- `vercel.json` runs `npm run build -- --mode vercel`.
+- Vite uses `/` as the asset base in `vercel` mode and `/paint28-production/` for GitHub Pages.
+- Vercel serves the built SPA from `dist` and rewrites routes to `index.html`.
+- `.vercelignore` excludes local build artifacts.
 
-Build command
-- The repo already defines `"build": "tsc -b && vite build"` in package.json, which Vercel will run.
+## Backend
 
-No secrets required
-- This demo uses the mocked quote service included in the project; no environment variables are required for a demo deploy.
+The demo does **not** use a mocked quote service. It connects to the Paint28 Supabase project and invokes the real `submit-quote` Edge Function.
 
-After deployment
-- Vercel will provide a free <project>.vercel.app URL for the demo. Share the URL with stakeholders for the presentation.
-- If you want me to verify the deployment and run a quick smoke-check (LCP image, contact form submit, mobile CTA visibility), tell me and I will run them.
+The committed `.env.vercel` file contains only browser-public values:
+
+- Supabase project URL
+- Supabase publishable key
+- Edge Function name
+- preview admin email
+
+No service-role key or other server secret is committed to GitHub or bundled into the frontend.
+
+## Deploy from Vercel
+
+Import `Jambovisuaalit/paint28-production` and select branch `demo/vercel-deploy`.
+
+- Framework preset: Vite
+- Build command: supplied by `vercel.json`
+- Output directory: supplied by `vercel.json`
+
+After the stable Vercel URL is known, add its exact origin to the `submit-quote` Edge Function origin allowlist before testing form submission.
+
+## Required smoke checks
+
+1. Public page loads without missing CSS, JavaScript or image assets.
+2. Mobile sticky CTA is visible below 768 px and respects the safe area.
+3. Quote submission with 1–3 valid images returns the success state.
+4. Invalid file type, oversized image and missing consent are blocked.
+5. Preview admin login, Realtime lead appearance and signed-image lightbox work.
+6. Preview deployment is not used as the production `paint28.fi` canonical URL.
