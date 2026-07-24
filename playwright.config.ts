@@ -22,6 +22,18 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          ...process.env,
+          VITE_SUPABASE_URL:
+            process.env.VITE_SUPABASE_URL ?? "https://example.supabase.co",
+          VITE_SUPABASE_PUBLISHABLE_KEY:
+            process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+            "sb_publishable_playwright_placeholder",
+          VITE_EDGE_FUNCTION_NAME:
+            process.env.VITE_EDGE_FUNCTION_NAME ?? "submit-quote",
+          VITE_PREVIEW_ADMIN_EMAIL:
+            process.env.VITE_PREVIEW_ADMIN_EMAIL ?? "ville@vidosocial.com",
+        },
       },
   projects: [
     {
