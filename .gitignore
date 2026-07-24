@@ -7,6 +7,8 @@ dist
 .DS_Store
 *.log
 .vite
+playwright-report
+test-results
 
 # TypeScriptin mahdollisesti generoimat Vite-konfiguraatioartefaktit
 /vite.config.js

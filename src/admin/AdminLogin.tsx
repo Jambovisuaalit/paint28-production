@@ -27,7 +27,10 @@ export function AdminLogin() {
   return (
     <main className="login-shell">
       <form className="login-card" onSubmit={signIn}>
-        <div className="brand"><span className="brand-mark">28</span><span><strong>PAINT28</strong><small>Preview admin</small></span></div>
+        <span className="site-name">
+          <strong>Paint28 Oy</strong>
+          <small>Preview admin</small>
+        </span>
         <ShieldCheck style={{ width: 42, height: 42, color: "#00f0ff", marginTop: 28 }} aria-hidden="true" />
         <h1>Hannan ohjauspaneeli</h1>
         <div className="spectrum-line login-spectrum" aria-hidden="true" />

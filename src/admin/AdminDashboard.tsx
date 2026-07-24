@@ -24,10 +24,22 @@ const STATUS_OPTIONS: QuoteStatus[] = [
   "Käsittelyssä",
   "Tarjous lähetetty",
   "Sovittu pajalle",
+  "Hyväksytty",
+  "Hylätty",
   "Valmis",
   "Arkistoitu",
 ];
-const FILTERS = ["Kaikki", "Uusi", "Käsittelyssä", "Sovittu pajalle", "Arkistoitu"] as const;
+const FILTERS = [
+  "Kaikki",
+  "Uusi",
+  "Käsittelyssä",
+  "Tarjous lähetetty",
+  "Sovittu pajalle",
+  "Hyväksytty",
+  "Hylätty",
+  "Valmis",
+  "Arkistoitu",
+] as const;
 type FilterKey = (typeof FILTERS)[number];
 type Toast = { type: "success" | "error"; message: string } | null;
 
@@ -184,7 +196,10 @@ export function AdminDashboard({ user }: { user: User }) {
     <main className="admin-page">
       <header className="admin-header">
         <div className="page-width admin-header-inner">
-          <div className="brand compact"><span className="brand-mark">28</span><span><strong>PAINT28 ADMIN</strong><small>{user.email}</small></span></div>
+          <span className="site-name compact">
+            <strong>Paint28 Admin</strong>
+            <small>{user.email}</small>
+          </span>
           <div className="admin-actions">
             <span className="live-badge">{realtimeState}</span>
             <a className="icon-button" href="/" aria-label="Sivustolle"><ArrowLeft /></a>

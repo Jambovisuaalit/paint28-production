@@ -54,12 +54,21 @@
 .toast { position: fixed; right: 18px; bottom: 18px; z-index: 80; max-width: 380px; padding: 14px 16px; border-radius: 13px; background: var(--surface-2); border: 1px solid var(--border); color: #ffffff; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45); }
 .toast.success { border-color: rgba(0, 240, 255, 0.36); }
 .toast.error { border-color: rgba(255, 255, 255, 0.3); box-shadow: inset 3px 0 0 var(--cyan), 0 16px 50px rgba(0, 0, 0, 0.45); }
-.lightbox { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-rows: auto 1fr; background: rgba(10, 10, 12, 0.98); }
+.lightbox { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-rows: auto 1fr; background: rgba(10, 10, 12, 0.98); outline: none; }
 .lightbox-bar { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .lightbox-controls { display: flex; gap: 8px; }
-.lightbox-stage { position: relative; overflow: hidden; display: grid; place-items: center; touch-action: none; }
-.lightbox-stage img { max-width: 92%; max-height: 86%; object-fit: contain; transform-origin: center; user-select: none; }
+.lightbox-stage { position: relative; overflow: hidden; display: grid; place-items: center; touch-action: none; overscroll-behavior: contain; user-select: none; }
+.lightbox-stage.is-pannable { cursor: grab; }
+.lightbox-stage.is-panning { cursor: grabbing; }
+.lightbox-image { max-width: 92%; max-height: 86%; object-fit: contain; transform-origin: center; user-select: none; pointer-events: none; will-change: transform; transition: transform 80ms linear; }
+.lightbox-stage.is-panning .lightbox-image { transition: none; }
+.lightbox-previous, .lightbox-next { position: absolute; z-index: 2; top: 50%; transform: translateY(-50%); }
+.lightbox-previous { left: 16px; }
+.lightbox-next { right: 16px; }
+.lightbox-hint { position: absolute; left: 50%; bottom: 18px; margin: 0; transform: translateX(-50%); padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; background: rgba(10, 10, 12, 0.78); color: var(--muted); font-size: 11px; pointer-events: none; white-space: nowrap; }
 .icon-button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: #ffffff; }
+.icon-button:disabled { opacity: 0.38; cursor: not-allowed; }
+.icon-button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .live-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgba(0, 240, 255, 0.18); border-radius: 999px; color: #ffffff; background: var(--cyan-soft); font-size: 12px; font-weight: 800; }
 .live-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 9px var(--cyan); }
 
@@ -79,4 +88,9 @@
   .lead-date { text-align: left; }
   .image-grid { grid-template-columns: repeat(2, 1fr); }
   .lead-controls { flex-direction: column; }
+  .lightbox-bar { align-items: flex-start; flex-direction: column; }
+  .lightbox-controls { width: 100%; justify-content: space-between; }
+  .lightbox-previous { left: 8px; }
+  .lightbox-next { right: 8px; }
+  .lightbox-hint { bottom: calc(12px + env(safe-area-inset-bottom)); max-width: calc(100% - 28px); white-space: normal; text-align: center; }
 }
