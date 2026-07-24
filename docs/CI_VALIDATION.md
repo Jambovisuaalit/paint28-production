@@ -1,18 +1,36 @@
 # CI validation
 
-This branch exists only to validate the current Paint28 `main` implementation through a reviewable pull request.
+GitHub Actions ei ole tällä hetkellä käytettävissä GitHub-tilin laskutus-/runner-ongelman vuoksi. Automaattiset PR-triggerit on poistettu väliaikaisesti käytöstä, jotta laskutusongelma ei tuota perusteettomia punaisia statuksia.
 
-Validation base commit:
+Nykyinen validointimalli:
 
 ```text
-e8ce1f58ceb82465dc0e0d7af81c27b8d406e43a
+draft PR
+→ npm run verify
+→ npm run verify:full
+→ SHA-256-varmennettu JSON-raportti
+→ Vercel READY
+→ manuaalinen katselmointi
+→ merge
 ```
 
-Required checks:
+Pakolliset komennot:
 
-- `lint-typecheck-build`
-- `playwright-ui-smoke`
+```bash
+npm ci
+npx playwright install chromium
+npm run verify:full
+```
 
-The pull request must remain unmerged until both checks are green and their logs are available.
+Raportin julkaisu:
 
-Validation trigger: 2026-07-24.
+```bash
+npm run verify:publish
+```
+
+Katso täydellinen prosessi:
+
+- `docs/EXTERNAL_CI_WORKAROUND.md`
+- `docs/PREVIEW_RUNBOOK.md`
+
+GitHub Actions voidaan palauttaa automaattiseksi hyväksyntäportiksi myöhemmin ilman, että ulkoinen varmennusskripti poistetaan.
