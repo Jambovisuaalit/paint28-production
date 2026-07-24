@@ -1,0 +1,15 @@
+# Ignore local files that don't need to be uploaded to Vercel
+node_modules
+.env
+.DS_Store
+.vscode
+.vite
+dist
+
+# Git artifacts
+.git
+
+# Local logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
