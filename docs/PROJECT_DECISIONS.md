@@ -1,6 +1,6 @@
 # Paint28 – lukitut projektipäätökset
 
-Päivitetty: 2026-07-23
+Päivitetty: 2026-07-24
 
 ## Teknologia
 
@@ -49,3 +49,11 @@ Ennen asiakasesittelyä:
 - tuotantoanalytiikkaa tai Search Consolea ei liitetä
 
 Asiakkaan kirjallisen hyväksynnän jälkeen aktivoidaan Hanna, domain, tuotantoanalytiikka ja lopulliset omistajuudet.
+
+## E2E-cleanup
+
+- Supabaseen deployattu `e2e-cleanup` versio 3 on poistettu käytöstä ja palauttaa aina HTTP 410 -vastauksen.
+- Versio 3 ei lue request bodya, suorita SQL-kyselyitä eikä poista tietoja tietokannasta tai Storagesta.
+- Edge Function -lokeissa näkyvä onnistunut HTTP 200 -cleanup-kutsu kuuluu aiemmalle versiolle 2.
+- Käytettävissä olevista lähteistä ei voida päätellä, epäonnistuiko mahdollinen vanhan version ajo tietokantapoistossa, Storage-poistossa vai molemmissa.
+- Cleanup-toimintoa ei aktivoida tuotantoon uudelleen ilman rajattua testiympäristöä, eksplisiittistä admin-valtuutusta ja auditoitavaa lähdekoodia.
