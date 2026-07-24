@@ -8,6 +8,8 @@ const MAX_FILES = 3;
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/heic"];
 const FINNISH_PLATE_PATTERN = /^[A-ZÅÄÖ]{2,3}-\d{1,3}$/;
 const FINNISH_PHONE_PATTERN = /^(?:\+358|00358|0)\d{5,12}$/;
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() ?? "";
+const TURNSTILE_SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -33,7 +35,11 @@ export function QuoteForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [state, setState] = useState<FormState>("idle");
   const [message, setMessage] = useState("");
+  const [reference, setReference] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetRef = useRef<string | null>(null);
 
   const previews = useMemo(
     () => files.map((file) => ({ file, url: URL.createObjectURL(file) })),
@@ -45,6 +51,69 @@ export function QuoteForm() {
       for (const preview of previews) URL.revokeObjectURL(preview.url);
     };
   }, [previews]);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY || !turnstileContainerRef.current) return;
+
+    let active = true;
+    let script: HTMLScriptElement | null = document.querySelector(
+      "script[data-paint28-turnstile]",
+    );
+
+    function renderWidget() {
+      if (
+        !active ||
+        !TURNSTILE_SITE_KEY ||
+        !turnstileContainerRef.current ||
+        !window.turnstile ||
+        turnstileWidgetRef.current
+      ) {
+        return;
+      }
+
+      turnstileWidgetRef.current = window.turnstile.render(
+        turnstileContainerRef.current,
+        {
+          sitekey: TURNSTILE_SITE_KEY,
+          theme: "dark",
+          callback: (token) => {
+            setTurnstileToken(token);
+            setState((current) => current === "error" ? "idle" : current);
+            setMessage("");
+          },
+          "expired-callback": () => setTurnstileToken(""),
+          "error-callback": () => {
+            setTurnstileToken("");
+            setState("error");
+            setMessage("Roskapostisuojausta ei voitu ladata. Päivitä sivu ja yritä uudelleen.");
+          },
+        },
+      );
+    }
+
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      if (!script) {
+        script = document.createElement("script");
+        script.src = TURNSTILE_SCRIPT_URL;
+        script.async = true;
+        script.defer = true;
+        script.dataset.paint28Turnstile = "true";
+        document.head.append(script);
+      }
+      script.addEventListener("load", renderWidget);
+    }
+
+    return () => {
+      active = false;
+      script?.removeEventListener("load", renderWidget);
+      if (turnstileWidgetRef.current && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetRef.current);
+        turnstileWidgetRef.current = null;
+      }
+    };
+  }, []);
 
   function fail(nextMessage: string) {
     setState("error");
@@ -81,14 +150,21 @@ export function QuoteForm() {
     event.preventDefault();
     if (state === "submitting") return;
 
-    if (!event.currentTarget.reportValidity()) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
 
     if (files.length < 1 || files.length > MAX_FILES) {
       fail("Lisää 1–3 kuvaa vauriosta.");
       return;
     }
 
-    const form = new FormData(event.currentTarget);
+    if (form.get("privacyConsentCheckbox") !== "on") {
+      fail("Tietosuostumus vaaditaan tarjouspyynnön lähettämiseen.");
+      return;
+    }
+
+    if (!formElement.reportValidity()) return;
+
     const licensePlate = normalizePlate(formText(form, "licensePlate"));
     const phone = normalizePhone(formText(form, "phone"));
 
@@ -102,8 +178,8 @@ export function QuoteForm() {
       return;
     }
 
-    if (form.get("privacyConsentCheckbox") !== "on") {
-      fail("Tietosuostumus vaaditaan.");
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      fail("Vahvista roskapostisuojaus ennen lähettämistä.");
       return;
     }
 
@@ -111,25 +187,36 @@ export function QuoteForm() {
     form.set("phone", phone);
     form.delete("privacyConsentCheckbox");
     form.set("privacyConsent", "true");
+    form.set("turnstileToken", turnstileToken);
     form.delete("images");
     for (const file of files) form.append("images", file);
 
     setState("submitting");
     setMessage("");
+    setReference("");
 
-    const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
-      body: form,
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
+        body: form,
+      });
 
-    if (error || !data?.success) {
-      fail(data?.error ?? "Tarjouspyynnön lähetys epäonnistui. Yritä uudelleen.");
-      return;
+      if (error || !data?.success) {
+        fail(data?.error ?? "Tarjouspyynnön lähetys epäonnistui. Yritä uudelleen.");
+        return;
+      }
+
+      setState("success");
+      setMessage("Tarjouspyyntö vastaanotettu. Otamme yhteyttä mahdollisimman pian.");
+      setReference(typeof data.reference === "string" ? data.reference : "");
+      setFiles([]);
+      formElement.reset();
+      setTurnstileToken("");
+      if (turnstileWidgetRef.current && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetRef.current);
+      }
+    } catch {
+      fail("Tarjouspyynnön lähetys epäonnistui. Tarkista verkkoyhteys ja yritä uudelleen.");
     }
-
-    setState("success");
-    setMessage("Tarjouspyyntö vastaanotettu. Otamme yhteyttä mahdollisimman pian.");
-    setFiles([]);
-    event.currentTarget.reset();
   }
 
   if (state === "success") {
@@ -138,7 +225,16 @@ export function QuoteForm() {
         <CheckCircle2 aria-hidden="true" />
         <h3>Tarjouspyyntö vastaanotettu</h3>
         <p>{message}</p>
-        <button type="button" className="button secondary" onClick={() => setState("idle")}>
+        {reference ? <p className="form-helper">Viite: {reference}</p> : null}
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => {
+            setState("idle");
+            setMessage("");
+            setReference("");
+          }}
+        >
           Lähetä toinen pyyntö
         </button>
       </div>
@@ -203,9 +299,10 @@ export function QuoteForm() {
           <strong>Lisää 1–3 kuvaa vauriosta</strong>
           <p>JPG, PNG tai HEIC · enintään 10 Mt / kuva</p>
         </div>
-        <label className="button secondary upload-button">
+        <label className="button secondary upload-button" htmlFor="damage-images">
           <ImagePlus aria-hidden="true" /> Valitse kuvat
           <input
+            id="damage-images"
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/heic"
@@ -237,6 +334,13 @@ export function QuoteForm() {
         <input type="checkbox" name="privacyConsentCheckbox" required />
         <span>Hyväksyn, että antamiani tietoja käytetään tarjouspyynnön käsittelyyn.</span>
       </label>
+
+      {TURNSTILE_SITE_KEY ? (
+        <div aria-label="Roskapostisuojaus">
+          <div ref={turnstileContainerRef} />
+          <p className="form-helper">Roskapostisuojaus on vahvistettava ennen lähettämistä.</p>
+        </div>
+      ) : null}
 
       {message ? <p className="form-message error" role="alert">{message}</p> : null}
 
