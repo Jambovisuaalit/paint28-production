@@ -1,0 +1,39 @@
+.quote-form .field-error {
+  display: block;
+  margin: 8px 0 0;
+  color: #ff9a9a;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+.quote-form .photo-error {
+  margin-top: -14px;
+}
+
+.quote-form input[aria-invalid="true"]:not([type="file"]),
+.quote-form textarea[aria-invalid="true"] {
+  border-color: rgba(255, 154, 154, 0.86);
+  box-shadow: 0 0 0 1px rgba(255, 154, 154, 0.18);
+}
+
+.quote-form input[aria-invalid="true"]:not([type="file"]):focus-visible,
+.quote-form textarea[aria-invalid="true"]:focus-visible {
+  outline-color: #ff9a9a;
+}
+
+.upload-box.invalid {
+  border-color: rgba(255, 154, 154, 0.78);
+  background: rgba(255, 154, 154, 0.045);
+}
+
+.upload-box:focus-within {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.18);
+}
+
+.upload-box.invalid:focus-within {
+  border-color: #ff9a9a;
+  box-shadow: 0 0 0 1px rgba(255, 154, 154, 0.2);
+}
