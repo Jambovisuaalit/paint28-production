@@ -16,26 +16,39 @@ Paint28 Oy:n React/Vite + Supabase -toteutus. Repository sisältää julkisen mo
 
 ```bash
 cp .env.example .env
-npm install
+npm ci
 npm run dev
 ```
 
-## Laatuportit
+## Laatuportit ilman GitHub Actionsia
+
+GitHub Actions ei ole tällä hetkellä käytettävissä GitHub-tilin laskutus-/runner-ongelman vuoksi. Repositorya käytetään edelleen brancheihin, pull requesteihin ja katselmointiin, mutta tekninen validointi ajetaan Actionsin ulkopuolella.
+
+Lint, TypeScript ja Vercel-mode build:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build -- --mode vercel
-npm run test:e2e:ci
+npm run verify
 ```
 
-Pull requestin CI suorittaa portit järjestyksessä:
+Täysi Playwright-validointi:
 
-```text
-lint → typecheck → Vercel-mode build → Playwright Chromium + mobile Chromium
+```bash
+npx playwright install chromium
+npm run verify:full
 ```
 
-Playwright-raportti tallennetaan GitHub Actions -artifactiksi myös epäonnistumisessa.
+SHA-256-varmennetun raportin julkaiseminen PR:ään:
+
+```bash
+npm run verify:publish
+```
+
+Tarkka väliaikainen hyväksyntämalli:
+
+- `docs/EXTERNAL_CI_WORKAROUND.md`
+- `docs/PREVIEW_RUNBOOK.md`
+
+Vercelin build-komento on `npm run verify`, joten oikeaan repositoryyn yhdistetty Vercel-preview toimii lint-, typecheck- ja build-porttina. Playwright todistetaan erillisellä `verify:full`-raportilla.
 
 ## Selainympäristömuuttujat
 
@@ -117,7 +130,7 @@ Pelkkää backend-secretiä ei saa aktivoida ilman frontendin site keytä, koska
 
 ## E2E-testit
 
-CI-testit käyttävät mockattua Edge Function -vastausta eivätkä kirjoita tuotantodataa:
+UI-testit käyttävät mockattua Edge Function -vastausta eivätkä kirjoita tuotantodataa:
 
 ```bash
 npm run test:e2e:ci
@@ -156,6 +169,8 @@ Preview-demo käyttää väliaikaista `vercel.app`-osoitetta ja `noindex,nofollo
 Katso:
 
 - `README-DEMO.md`
+- `docs/EXTERNAL_CI_WORKAROUND.md`
+- `docs/PREVIEW_RUNBOOK.md`
 - `docs/PROJECT_DECISIONS.md`
 - `docs/DEMO_ACCEPTANCE.md`
 - `docs/BRAND_ASSET_GATE.md`

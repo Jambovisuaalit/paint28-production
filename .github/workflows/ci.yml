@@ -1,17 +1,14 @@
-name: CI
+name: CI (manual fallback)
 
+# GitHub Actionsin automaattiset ajot on väliaikaisesti poistettu käytöstä
+# GitHub-tilin laskutus-/runner-ongelman vuoksi. Tätä workflowta ei saa
+# tulkita hyväksyntäportiksi ennen kuin Actions toimii jälleen normaalisti.
+# Väliaikainen hyväksyntämalli: docs/EXTERNAL_CI_WORKAROUND.md
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: paint28-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   validate:
@@ -28,10 +25,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run build -- --mode vercel
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify
 
   e2e-ui:
     name: playwright-ui-smoke
@@ -48,7 +44,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:ci
       - name: Upload Playwright report

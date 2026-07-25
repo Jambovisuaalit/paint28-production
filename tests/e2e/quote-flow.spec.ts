@@ -70,6 +70,43 @@ test.describe("Paint28 public quote flow", () => {
     await expect(page.getByText(`Viite: ${QUOTE_REFERENCE}`)).toBeVisible();
   });
 
+  test("Inline validation: license plate, phone, email and photos", async ({ page }) => {
+    await openQuoteForm(page);
+
+    const form = page.locator("form.quote-form");
+    await form.getByLabel("Nimi").fill("Playwright QA");
+    await form.getByLabel("Rekisterinumero").fill("A1");
+    await form.getByLabel("Puhelin").fill("1234");
+    await form.getByLabel("Sähköposti").fill("virheellinen");
+    await form
+      .getByLabel("Vauriokuvaus")
+      .fill("Oikean takaoven lommo ja maalipinnan naarmu.");
+    await form.getByRole("checkbox").check();
+
+    await form
+      .getByRole("button", { name: "Lähetä tarjouspyyntö" })
+      .click();
+
+    await expect(page.locator("#license-plate-error")).toContainText(
+      "Kirjoita suomalainen rekisteritunnus, esimerkiksi ABC-123.",
+    );
+    await expect(page.locator("#phone-error")).toContainText(
+      "Kirjoita suomalainen puhelinnumero",
+    );
+    await expect(page.locator("#email-error")).toContainText(
+      "Kirjoita kelvollinen sähköpostiosoite",
+    );
+    await expect(page.locator("#photo-error")).toContainText(
+      "Lisää 1–3 kuvaa vauriosta.",
+    );
+
+    await expect(form.getByLabel("Rekisterinumero")).toHaveAttribute("aria-invalid", "true");
+    await expect(form.getByLabel("Puhelin")).toHaveAttribute("aria-invalid", "true");
+    await expect(form.getByLabel("Sähköposti")).toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#damage-images")).toHaveAttribute("aria-invalid", "true");
+    await expect(form.getByLabel("Rekisterinumero")).toBeFocused();
+  });
+
   test("Validation Failures: privacy consent", async ({ page }) => {
     await openQuoteForm(page);
     await fillRequiredFields(page);
@@ -97,15 +134,15 @@ test.describe("Paint28 public quote flow", () => {
       .getByRole("button", { name: "Lähetä tarjouspyyntö" })
       .click();
 
-    await expect(form.getByRole("alert")).toContainText(
+    await expect(page.locator("#photo-error")).toContainText(
       "Lisää 1–3 kuvaa vauriosta.",
     );
+    await expect(page.locator("#damage-images")).toHaveAttribute("aria-invalid", "true");
   });
 
   test("Validation Failures: invalid PDF", async ({ page }) => {
     await openQuoteForm(page);
 
-    const form = page.locator("form.quote-form");
     const input = page.locator("#damage-images");
     await input.setInputFiles({
       name: "damage-report.pdf",
@@ -113,7 +150,7 @@ test.describe("Paint28 public quote flow", () => {
       buffer: Buffer.from("%PDF-1.7\nPaint28 invalid fixture\n"),
     });
 
-    await expect(form.getByRole("alert")).toContainText(
+    await expect(page.locator("#photo-error")).toContainText(
       "Sallittu kuvamuoto on JPG, PNG tai HEIC.",
     );
     await expect(input).toHaveValue("");
